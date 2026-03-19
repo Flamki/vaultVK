@@ -1,58 +1,52 @@
 # VaultKV
 
-<p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=18&pause=900&color=36BCF7&center=true&vCenter=true&width=980&lines=VaultKV+Phase+2%3A+C%2B%2B+Storage+Engine+%2B+FastAPI+Gateway+%2B+React+Control+Plane;Live+Cluster+Telemetry%2C+Key+Explorer%2C+Raft+Failover+Demo;One+Command+Run%3A+docker+compose+up+-d+--build" alt="VaultKV animated header" />
-</p>
+VaultKV is a distributed key-value system with a full-stack control plane:
 
-<p align="center">
-  <a href="https://github.com/Flamki/vaultVK/actions/workflows/ci.yml"><img src="https://github.com/Flamki/vaultVK/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <img src="https://img.shields.io/badge/C%2B%2B-17-blue.svg" alt="C++17">
-  <img src="https://img.shields.io/badge/FastAPI-0.111-009688.svg" alt="FastAPI">
-  <img src="https://img.shields.io/badge/React-18-61dafb.svg" alt="React">
-  <img src="https://img.shields.io/badge/Runtime-Linux%20epoll-2ea44f.svg" alt="Linux epoll">
-  <img src="https://img.shields.io/badge/Crypto-AES--256--GCM-informational.svg" alt="AES-256-GCM">
-</p>
+- C++17 storage engine (`epoll`, TLV protocol, WAL, replication)
+- FastAPI gateway (REST + WebSocket metrics stream)
+- React observability console (dashboard, explorer, consensus demo, architecture trace)
+- Dockerized 5-service runtime (3 nodes + gateway + frontend)
 
-VaultKV is a distributed key-value system with a complete full-stack control plane:
+Last updated: 2026-03-19
 
-- C++17 engine (`epoll`, TLV protocol, WAL, MemTable, SSTable, compaction)
-- FastAPI gateway (TLV-to-REST + WebSocket metrics stream)
-- React dashboard (ops charts, key explorer, failover controls)
-- Dockerized 5-service runtime (3 data nodes + gateway + frontend)
+## Current Frontend Capabilities
+
+- Landing experience + tabbed control plane
+- Overview dashboard with live throughput and cluster metrics
+- Key Explorer (`GET`, `SET`, `DEL`, `SCAN`)
+- Raft failover simulation (kill/restart nodes)
+- Architecture page with a **live request trace runner** (not static text)
+- Notification center wired to real app events:
+  - gateway connection changes
+  - node health transitions
+  - leader changes
+  - quorum loss/restore
+- Floating mini throughput graph on non-overview tabs (minimize/expand + corner switching)
 
 ## Live Deployment (Current)
 
 - Frontend: [https://vault-vk.vercel.app](https://vault-vk.vercel.app)
 - Backend gateway: [https://80.225.207.59.nip.io](https://80.225.207.59.nip.io)
-- Health check: [https://80.225.207.59.nip.io/health](https://80.225.207.59.nip.io/health)
+- Health: [https://80.225.207.59.nip.io/health](https://80.225.207.59.nip.io/health)
 - Cluster snapshot: [https://80.225.207.59.nip.io/api/cluster](https://80.225.207.59.nip.io/api/cluster)
-- Gateway OpenAPI docs: [https://80.225.207.59.nip.io/docs](https://80.225.207.59.nip.io/docs)
-
-## Documentation Links
-
-- Architecture notes: [ARCHITECTURE.md](ARCHITECTURE.md)
-- Vercel deployment: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
-- Oracle backend deployment: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
-- Render trial deployment: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
+- OpenAPI docs: [https://80.225.207.59.nip.io/docs](https://80.225.207.59.nip.io/docs)
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    B[Browser React + Vite] -->|HTTP + WS| G[FastAPI Gateway]
+    U[Client / Browser] -->|HTTP + WS| G[FastAPI Gateway]
     G -->|TLV TCP| N1[VaultKV Node 1 :7379]
     G -->|TLV TCP| N2[VaultKV Node 2 :7380]
     G -->|TLV TCP| N3[VaultKV Node 3 :7381]
     N1 -->|WAL replication| N2
     N1 -->|WAL replication| N3
-    N1 --> D1[(Encrypted WAL/SSTable)]
-    N2 --> D2[(Encrypted WAL/SSTable)]
-    N3 --> D3[(Encrypted WAL/SSTable)]
+    N1 --> D1[(Encrypted WAL/SSTables)]
+    N2 --> D2[(Encrypted WAL/SSTables)]
+    N3 --> D3[(Encrypted WAL/SSTables)]
 ```
 
-## Local Full Stack (Docker)
-
-Start:
+## Quick Start (Full Stack via Docker)
 
 ```bash
 docker compose up -d --build
@@ -62,7 +56,8 @@ Endpoints:
 
 - Frontend: `http://localhost:3000`
 - Gateway docs: `http://localhost:8000/docs`
-- Cluster snapshot: `http://localhost:8000/api/cluster`
+- Health: `http://localhost:8000/health`
+- Cluster: `http://localhost:8000/api/cluster`
 
 Stop:
 
@@ -70,13 +65,51 @@ Stop:
 docker compose down -v
 ```
 
-## Native Engine Build
+## Local Development
+
+### 1) Engine (native)
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
 ```
+
+### 2) Gateway (Python)
+
+```bash
+cd gateway
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### 3) Frontend (Vite)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Optional frontend env:
+
+- `VITE_API_BASE_URL=https://<gateway-domain>`
+- `VITE_WS_BASE_URL=wss://<gateway-domain>`
+
+## Gateway API Surface
+
+- `GET /health`
+- `POST /api/keys`
+- `GET /api/keys/{key}`
+- `DELETE /api/keys/{key}`
+- `GET /api/keys?prefix=<prefix>&limit=<n>`
+- `GET /api/cluster`
+- `POST /api/nodes/{node_id}/kill`
+- `POST /api/nodes/{node_id}/restart`
+- `WS /ws/metrics`
 
 ## Verification Scripts
 
@@ -92,86 +125,33 @@ Windows:
 powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
 ```
 
-These run configure/build/tests, launch all services, execute quorum replication demo, verify gateway/frontend health, then teardown.
+## Deployment
 
-## Deployment Options
+Primary documented path:
 
-### Vercel Frontend + External Backend
+- Vercel frontend + external backend: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
 
-- Guide: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
-- Required Vercel root directory: `frontend`
-- Required env vars:
-  - `VITE_API_BASE_URL=https://<backend-domain>`
-  - `VITE_WS_BASE_URL=wss://<backend-domain>` (optional)
+Important for Vercel:
 
-### Oracle Always Free Backend (Recommended)
+- Set project root directory to `frontend`
+- Configure `VITE_API_BASE_URL` (and optional `VITE_WS_BASE_URL`)
 
-- Guide: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
-- Deployment assets:
-  - [`deploy/oracle/docker-compose.oracle.yml`](deploy/oracle/docker-compose.oracle.yml)
-  - [`deploy/oracle/Caddyfile`](deploy/oracle/Caddyfile)
-  - [`deploy/oracle/.env.example`](deploy/oracle/.env.example)
-- Helper scripts:
-  - [`scripts/oracle_bootstrap.sh`](scripts/oracle_bootstrap.sh)
-  - [`scripts/oracle_deploy.sh`](scripts/oracle_deploy.sh)
+## Documentation
 
-### Render Trial Backend
-
-- Guide: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
-- Blueprint: [render.yaml](render.yaml)
-- Note: private services are required for nodes (trial credits needed).
-
-## Quorum Demo
-
-Linux/macOS:
-
-```bash
-bash scripts/quorum_demo.sh
-```
-
-Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\quorum_demo.ps1
-```
-
-Python:
-
-```bash
-python3 scripts/quorum_demo.py
-```
-
-## Live API Smoke Test (Copy/Paste)
-
-Use this against the current backend:
-
-```bash
-curl -s https://80.225.207.59.nip.io/health
-curl -s -X POST https://80.225.207.59.nip.io/api/keys -H "content-type: application/json" -d "{\"key\":\"hello\",\"value\":\"world\"}"
-curl -s "https://80.225.207.59.nip.io/api/keys/hello"
-curl -s "https://80.225.207.59.nip.io/api/scan?prefix=h&limit=10"
-```
-
-Windows `curl` TLS note:
-
-```powershell
-curl.exe --ssl-no-revoke https://80.225.207.59.nip.io/health
-```
+- Architecture notes: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Vercel deployment guide: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
 
 ## Troubleshooting
 
-### `GET` shows `key not found`
-
-This is expected when the key has not been written yet. Use `SET` first, then `GET` the same key.
-
 ### Vercel shows `404: NOT_FOUND`
 
-Most common cause: wrong project root.  
-Set Vercel project root directory to `frontend`, then redeploy.
+Set the Vercel project root directory to `frontend`, then redeploy.
 
-### TLS issues on some Windows curl builds
+### `GET` returns `key not found`
 
-If `curl` fails with revocation checks on Windows Schannel, use:
+Write the key first with `SET`, then read the same key.
+
+### Windows curl TLS revocation issue
 
 ```powershell
 curl.exe --ssl-no-revoke https://<url>
@@ -182,28 +162,11 @@ curl.exe --ssl-no-revoke https://<url>
 ```text
 vaultVK/
   include/vaultkv/          # C++ public headers
-  src/                      # C++ core engine
+  src/                      # C++ engine
   tests/                    # C++ tests
-  gateway/                  # FastAPI TLV bridge
+  gateway/                  # FastAPI gateway + TLV bridge
   frontend/                 # React control plane
-  nginx/                    # Reverse proxy for API + WS
-  scripts/                  # Verification and deployment scripts
-  .github/workflows/ci.yml  # Multi-job CI pipeline
+  scripts/                  # Verification scripts
+  .github/workflows/ci.yml  # CI pipeline
 ```
 
-## CI Pipeline
-
-Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-
-- `native-build`
-- `asan`
-- `tsan`
-- `ubsan`
-- `docker-cluster`
-- `frontend-build`
-
-## Platform Notes
-
-- C++ server runtime is Linux-first (`epoll`).
-- On Windows/macOS, use Docker for complete Phase 2 runtime behavior.
-- If host OpenSSL dev libs are missing, host-native build uses development fallback crypto; Linux Docker runtime uses OpenSSL.
