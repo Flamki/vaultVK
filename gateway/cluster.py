@@ -100,6 +100,7 @@ class ClusterManager:
     def __init__(self, nodes: list[tuple[int, str, int]]):
         self.nodes = {nid: VaultKVNode(nid, host, port) for nid, host, port in nodes}
         self._leader_id = nodes[0][0] if nodes else 1
+        self._forced_down: set[int] = set()
 
     async def startup(self) -> None:
         await asyncio.gather(*(n.connect() for n in self.nodes.values()))
@@ -122,6 +123,10 @@ class ClusterManager:
 
     async def ping(self, node_id: int) -> dict:
         node = self.nodes[node_id]
+        if node_id in self._forced_down:
+            node.meta.healthy = False
+            node.meta.is_leader = False
+            return {"ok": False, "seq": node.meta.wal_seq, "forced_down": True}
         try:
             rtype, rbody = await node.send_frame(OP_PING, b"")
             if rtype == OP_ACK:
@@ -134,6 +139,17 @@ class ClusterManager:
         except Exception:
             node.meta.healthy = False
             return {"ok": False, "seq": node.meta.wal_seq}
+
+    def force_down(self, node_id: int) -> None:
+        if node_id not in self.nodes:
+            return
+        self._forced_down.add(node_id)
+        self.nodes[node_id].meta.healthy = False
+        self.nodes[node_id].meta.is_leader = False
+        self._elect_leader()
+
+    def recover(self, node_id: int) -> None:
+        self._forced_down.discard(node_id)
 
     async def set(self, key: str, value: str) -> dict:
         node = self.leader()
@@ -188,4 +204,3 @@ class ClusterManager:
             else:
                 seq_gap = max(0, leader_seq - node.meta.wal_seq)
                 node.meta.lag_ms = float(seq_gap * 10.0)
-

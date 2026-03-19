@@ -354,11 +354,37 @@ function RaftView() {
                 </span>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => { killNode(node.node_id); push(`Node ${node.node_id} killed.`); }} disabled={!node.healthy} className="flex-1 rounded-lg bg-rose-500/20 py-2 text-[10px] font-bold uppercase tracking-widest text-rose-300 disabled:opacity-30">
+                <button
+                  onClick={() => {
+                    void (async () => {
+                      const result = await killNode(node.node_id);
+                      if (result.ok) {
+                        push(result.simulated ? `Node ${node.node_id} killed (simulated).` : `Node ${node.node_id} killed.`);
+                      } else {
+                        push(`Kill failed for node ${node.node_id}: ${result.detail}`);
+                      }
+                    })();
+                  }}
+                  disabled={!node.healthy}
+                  className="flex-1 rounded-lg bg-rose-500/20 py-2 text-[10px] font-bold uppercase tracking-widest text-rose-300 disabled:opacity-30"
+                >
                   <Power className="mr-1 inline h-3 w-3" />
                   Kill
                 </button>
-                <button onClick={() => { restartNode(node.node_id); push(`Node ${node.node_id} restarted.`); }} disabled={node.healthy} className="flex-1 rounded-lg bg-white/10 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 disabled:opacity-30">
+                <button
+                  onClick={() => {
+                    void (async () => {
+                      const result = await restartNode(node.node_id);
+                      if (result.ok) {
+                        push(result.simulated ? `Node ${node.node_id} restarted (simulated).` : `Node ${node.node_id} restarted.`);
+                      } else {
+                        push(`Restart failed for node ${node.node_id}: ${result.detail}`);
+                      }
+                    })();
+                  }}
+                  disabled={node.healthy}
+                  className="flex-1 rounded-lg bg-white/10 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-300 disabled:opacity-30"
+                >
                   <RefreshCw className="mr-1 inline h-3 w-3" />
                   Restart
                 </button>

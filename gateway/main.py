@@ -187,12 +187,22 @@ async def kill_node(node_id: int):
     if node_id not in app.state.cluster.nodes:
         raise HTTPException(404, f"unknown node: {node_id}")
     ok, detail = _docker_control(app, "stop", _container_name_for_node(node_id))
-    app.state.cluster.nodes[node_id].meta.healthy = False
-    app.state.cluster.nodes[node_id].meta.is_leader = False
-    app.state.cluster._elect_leader()
+    simulated = False
+    if not ok:
+        simulated = True
+        app.state.cluster.force_down(node_id)
+        if detail:
+            detail = f"{detail}; using simulated node-down mode"
+        else:
+            detail = "using simulated node-down mode"
+    else:
+        app.state.cluster.nodes[node_id].meta.healthy = False
+        app.state.cluster.nodes[node_id].meta.is_leader = False
+        app.state.cluster._elect_leader()
     return {
         "killed": node_id,
-        "ok": ok,
+        "ok": ok or simulated,
+        "simulated": simulated,
         "detail": detail,
     }
 
@@ -202,12 +212,22 @@ async def restart_node(node_id: int):
     if node_id not in app.state.cluster.nodes:
         raise HTTPException(404, f"unknown node: {node_id}")
     ok, detail = _docker_control(app, "start", _container_name_for_node(node_id))
+    simulated = False
+    if not ok:
+        simulated = True
+        if detail:
+            detail = f"{detail}; using simulated node-recover mode"
+        else:
+            detail = "using simulated node-recover mode"
+
+    app.state.cluster.recover(node_id)
     await asyncio.sleep(1.0)
     await app.state.cluster.nodes[node_id].connect()
     app.state.cluster._elect_leader()
     return {
         "restarted": node_id,
-        "ok": ok,
+        "ok": ok or simulated,
+        "simulated": simulated,
         "detail": detail,
     }
 

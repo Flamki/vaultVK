@@ -32,8 +32,8 @@ interface ClusterState {
   setNodes: (nodes: NodeMeta[]) => void;
   pushMetrics: (pt: MetricsPoint) => void;
   setStatus: (s: "connecting" | "open" | "closed") => void;
-  killNode: (id: number) => void;
-  restartNode: (id: number) => void;
+  killNode: (id: number) => Promise<{ ok: boolean; detail: string; simulated?: boolean }>;
+  restartNode: (id: number) => Promise<{ ok: boolean; detail: string; simulated?: boolean }>;
 }
 
 export const useClusterStore = create<ClusterState>((set) => ({
@@ -83,22 +83,56 @@ export const useClusterStore = create<ClusterState>((set) => ({
       history: [...state.history.slice(-119), pt]
     })),
   setStatus: (wsStatus) => set({ wsStatus }),
-  killNode: (id) => {
+  killNode: async (id) => {
+    const previousNodes = useClusterStore.getState().nodes;
     set((state) => ({
       nodes: state.nodes.map((n) =>
         n.node_id === id ? { ...n, healthy: false, is_leader: false } : n
       )
     }));
-    void fetch(apiUrl(`/api/nodes/${id}/kill`), { method: "POST" }).catch(() => {
-      // UI remains responsive even if backend action fails.
-    });
+    try {
+      const res = await fetch(apiUrl(`/api/nodes/${id}/kill`), { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; detail?: string; simulated?: boolean };
+      const ok = Boolean(body.ok);
+      if (!ok) {
+        set({ nodes: previousNodes });
+      }
+      return {
+        ok,
+        detail: body.detail ?? (ok ? "node kill applied" : `kill failed (HTTP ${res.status})`),
+        simulated: body.simulated
+      };
+    } catch (error) {
+      set({ nodes: previousNodes });
+      return {
+        ok: false,
+        detail: error instanceof Error ? error.message : "network error during kill"
+      };
+    }
   },
-  restartNode: (id) => {
+  restartNode: async (id) => {
+    const previousNodes = useClusterStore.getState().nodes;
     set((state) => ({
       nodes: state.nodes.map((n) => (n.node_id === id ? { ...n, healthy: true } : n))
     }));
-    void fetch(apiUrl(`/api/nodes/${id}/restart`), { method: "POST" }).catch(() => {
-      // UI remains responsive even if backend action fails.
-    });
+    try {
+      const res = await fetch(apiUrl(`/api/nodes/${id}/restart`), { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as { ok?: boolean; detail?: string; simulated?: boolean };
+      const ok = Boolean(body.ok);
+      if (!ok) {
+        set({ nodes: previousNodes });
+      }
+      return {
+        ok,
+        detail: body.detail ?? (ok ? "node restart applied" : `restart failed (HTTP ${res.status})`),
+        simulated: body.simulated
+      };
+    } catch (error) {
+      set({ nodes: previousNodes });
+      return {
+        ok: false,
+        detail: error instanceof Error ? error.message : "network error during restart"
+      };
+    }
   }
 }));
