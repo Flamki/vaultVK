@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  ArrowUpRight,
   Bell,
   BookOpen,
   CheckCircle2,
   ChevronRight,
   Command,
+  CornerDownLeft,
   Cpu,
   Database,
   FileText,
   Globe,
+  History,
   LayoutDashboard,
   Lock,
   Maximize2,
@@ -1156,6 +1159,24 @@ export default function App() {
   const [tab, setTab] = useState<TabId>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchActiveIndex, setSearchActiveIndex] = useState(0);
+  const [recentSearches, setRecentSearches] = useState<Array<{ id: TabId; label: string }>>(() => {
+    try {
+      const raw = localStorage.getItem("observe_recent_searches");
+      if (!raw) {
+        return [
+          { id: "dashboard", label: "Overview" },
+          { id: "explorer", label: "Explorer" },
+          { id: "raft", label: "Consensus" }
+        ];
+      }
+      const parsed = JSON.parse(raw) as Array<{ id: TabId; label: string }>;
+      return Array.isArray(parsed) ? parsed.slice(0, 6) : [];
+    } catch {
+      return [];
+    }
+  });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
@@ -1185,6 +1206,46 @@ export default function App() {
       { id: "architecture" as const, label: "Architecture", icon: BookOpen }
     ],
     []
+  );
+
+  const searchItems = useMemo(
+    () =>
+      tabs.map((item) => ({
+        ...item,
+        subtitle:
+          item.id === "dashboard"
+            ? "Live cluster telemetry and throughput"
+            : item.id === "explorer"
+              ? "Run GET / SET / DEL / SCAN commands"
+              : item.id === "raft"
+                ? "Node failover and leader elections"
+                : "Visual architecture and trace runner",
+        category: "Navigation"
+      })),
+    [tabs]
+  );
+
+  const filteredSearchItems = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return searchItems.filter((item) => item.label.toLowerCase().includes(q) || item.subtitle.toLowerCase().includes(q));
+  }, [searchItems, searchQuery]);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchActiveIndex(0);
+  }, []);
+
+  const selectSearchItem = useCallback(
+    (id: TabId, label: string) => {
+      setTab(id);
+      const updated = [{ id, label }, ...recentSearches.filter((x) => x.id !== id)].slice(0, 6);
+      setRecentSearches(updated);
+      localStorage.setItem("observe_recent_searches", JSON.stringify(updated));
+      closeSearch();
+    },
+    [closeSearch, recentSearches]
   );
 
   useEffect(() => {
@@ -1264,16 +1325,23 @@ export default function App() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setNotificationsOpen(false);
-        setSearchOpen((v) => !v);
+        setSearchOpen((v) => {
+          const next = !v;
+          if (!next) {
+            setSearchQuery("");
+            setSearchActiveIndex(0);
+          }
+          return next;
+        });
       }
       if (e.key === "Escape") {
-        setSearchOpen(false);
+        closeSearch();
         setNotificationsOpen(false);
       }
     };
     document.addEventListener("keydown", handle);
     return () => document.removeEventListener("keydown", handle);
-  }, []);
+  }, [closeSearch]);
 
   return (
     <div className="mesh-gradient min-h-screen bg-[#050505] text-zinc-100">
@@ -1281,21 +1349,158 @@ export default function App() {
 
       <AnimatePresence>
         {searchOpen ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[115] grid place-items-start bg-black/70 px-4 pt-[16vh] backdrop-blur-sm" onClick={() => setSearchOpen(false)}>
-            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-xl rounded-2xl border border-white/10 bg-zinc-900 p-4">
-              <div className="mb-3 flex items-center gap-3">
-                <Search className="h-4 w-4 text-zinc-500" />
-                <span className="text-sm text-zinc-300">Quick Search</span>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[115] grid place-items-start bg-black/80 px-4 pt-[13vh] backdrop-blur-md"
+            onClick={closeSearch}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -18, scale: 0.98 }}
+              transition={{ type: "spring", damping: 24, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl overflow-hidden rounded-3xl border border-white/15 bg-zinc-950/95 shadow-2xl shadow-black/60"
+            >
+              <div className="flex items-center gap-3 border-b border-white/10 p-5">
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2">
+                  <Search className="h-4 w-4 text-zinc-400" />
+                </div>
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchActiveIndex(0);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      if (filteredSearchItems.length > 0) {
+                        setSearchActiveIndex((prev) => (prev + 1) % filteredSearchItems.length);
+                      }
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      if (filteredSearchItems.length > 0) {
+                        setSearchActiveIndex((prev) => (prev - 1 + filteredSearchItems.length) % filteredSearchItems.length);
+                      }
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (filteredSearchItems.length > 0 && searchQuery.trim()) {
+                        const target = filteredSearchItems[searchActiveIndex] ?? filteredSearchItems[0];
+                        selectSearchItem(target.id, target.label);
+                        return;
+                      }
+                      if (!searchQuery.trim() && recentSearches.length > 0) {
+                        selectSearchItem(recentSearches[0].id, recentSearches[0].label);
+                      }
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      closeSearch();
+                    }
+                  }}
+                  placeholder="Search pages, actions, and console views..."
+                  className="w-full bg-transparent text-lg font-semibold text-zinc-100 outline-none placeholder:text-zinc-600"
+                />
+                <span className="rounded-md border border-white/10 bg-white/5 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  ESC
+                </span>
               </div>
-              <div className="grid gap-2">
-                {tabs.map((item) => (
-                  <button key={item.id} onClick={() => { setTab(item.id); setSearchOpen(false); }} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-left text-sm text-zinc-200 hover:bg-white/10">
-                    <span>{item.label}</span>
-                    <item.icon className="h-4 w-4 text-zinc-500" />
-                  </button>
-                ))}
+
+              <div className="custom-scrollbar max-h-[60vh] overflow-y-auto p-4">
+                {searchQuery.trim() === "" ? (
+                  <div className="space-y-6">
+                    <div>
+                      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Recent</p>
+                      <div className="space-y-2">
+                        {recentSearches.map((entry) => (
+                          <button
+                            key={`${entry.id}-${entry.label}`}
+                            onClick={() => selectSearchItem(entry.id, entry.label)}
+                            className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left hover:bg-white/[0.08]"
+                          >
+                            <div className="flex items-center gap-3">
+                              <History className="h-4 w-4 text-zinc-500" />
+                              <span className="text-sm font-semibold text-zinc-200">{entry.label}</span>
+                            </div>
+                            <ArrowUpRight className="h-4 w-4 text-zinc-600" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-500">Jump To</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {searchItems.map((item) => (
+                          <button
+                            key={`jump-${item.id}`}
+                            onClick={() => selectSearchItem(item.id, item.label)}
+                            className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 text-left hover:bg-white/[0.08]"
+                          >
+                            <div className="mb-2 flex items-center gap-2">
+                              <item.icon className="h-4 w-4 text-zinc-400" />
+                              <span className="text-sm font-semibold text-zinc-200">{item.label}</span>
+                            </div>
+                            <p className="text-xs text-zinc-500">{item.subtitle}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : filteredSearchItems.length > 0 ? (
+                  <div className="space-y-2">
+                    {filteredSearchItems.map((item, idx) => (
+                      <button
+                        key={`result-${item.id}`}
+                        onClick={() => selectSearchItem(item.id, item.label)}
+                        onMouseEnter={() => setSearchActiveIndex(idx)}
+                        className={clsx(
+                          "flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left transition",
+                          searchActiveIndex === idx
+                            ? "border-blue-400/35 bg-blue-500/10"
+                            : "border-white/10 bg-white/[0.02] hover:bg-white/[0.08]"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={clsx("rounded-xl border p-2", searchActiveIndex === idx ? "border-blue-400/30 bg-blue-500/15" : "border-white/10 bg-white/5")}>
+                            <item.icon className="h-4 w-4 text-zinc-300" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-zinc-100">{item.label}</p>
+                            <p className="text-xs text-zinc-500">{item.subtitle}</p>
+                          </div>
+                        </div>
+                        <ArrowUpRight className={clsx("h-4 w-4", searchActiveIndex === idx ? "text-blue-300" : "text-zinc-600")} />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center">
+                    <p className="text-sm text-zinc-300">No results for “{searchQuery}”</p>
+                    <p className="mt-1 text-xs text-zinc-600">Try terms like `explorer`, `consensus`, or `architecture`.</p>
+                  </div>
+                )}
               </div>
-            </div>
+
+              <div className="flex items-center justify-between border-t border-white/10 bg-black/25 px-4 py-3">
+                <div className="flex items-center gap-4 text-[10px] font-mono uppercase tracking-[0.2em] text-zinc-500">
+                  <span className="flex items-center gap-1">
+                    <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5">↑↓</span>
+                    Navigate
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5">
+                      <CornerDownLeft className="h-3 w-3" />
+                    </span>
+                    Open
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-zinc-600">Observe Command Palette</span>
+              </div>
+            </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
