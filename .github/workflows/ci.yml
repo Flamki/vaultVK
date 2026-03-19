@@ -1,51 +1,127 @@
-name: ci
+name: VaultKV CI
 
 on:
   push:
+    branches: [main, dev]
   pull_request:
+    branches: [main]
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
+  native-build:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake g++ libssl-dev
-
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-
+          sudo apt-get install -y cmake ninja-build g++ libssl-dev
+      - name: Configure (Release)
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
       - name: Build
-        run: cmake --build build -j"$(nproc)"
-
-      - name: Unit tests
+        run: cmake --build build --parallel
+      - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Benchmark smoke
+        run: ./build/vaultkv-bench
 
-  docker-cluster-smoke:
-    runs-on: ubuntu-latest
+  asan:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ libssl-dev
+      - name: Configure (ASAN)
+        run: |
+          cmake -S . -B build-asan -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_CXX_FLAGS='-fsanitize=address -fno-omit-frame-pointer' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=address'
+      - name: Build + test (ASAN)
+        env:
+          ASAN_OPTIONS: "halt_on_error=1:detect_leaks=1:check_initialization_order=1"
+        run: |
+          cmake --build build-asan --parallel
+          ctest --test-dir build-asan --output-on-failure
 
-      - name: Start cluster
+  tsan:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ libssl-dev
+      - name: Configure (TSAN)
+        run: |
+          cmake -S . -B build-tsan -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_CXX_FLAGS='-fsanitize=thread' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=thread'
+      - name: Build + test (TSAN)
+        env:
+          TSAN_OPTIONS: "halt_on_error=1:second_deadlock_stack=1"
+        run: |
+          cmake --build build-tsan --parallel
+          ctest --test-dir build-tsan --output-on-failure
+
+  ubsan:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ libssl-dev
+      - name: Configure (UBSAN)
+        run: |
+          cmake -S . -B build-ubsan -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_CXX_FLAGS='-fsanitize=undefined -fno-sanitize-recover=all' \
+            -DCMAKE_EXE_LINKER_FLAGS='-fsanitize=undefined'
+      - name: Build + test (UBSAN)
+        env:
+          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+        run: |
+          cmake --build build-ubsan --parallel
+          ctest --test-dir build-ubsan --output-on-failure
+
+  docker-cluster:
+    runs-on: ubuntu-22.04
+    needs: native-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build cluster
         run: docker compose up -d --build
-
+      - name: Wait for stack
+        run: sleep 8
       - name: Quorum demo
-        run: bash scripts/quorum_demo.sh
-
-      - name: Cluster status
-        if: always()
-        run: docker compose ps
-
-      - name: Node logs
-        if: always()
-        run: docker compose logs --no-color --tail=200
-
-      - name: Shutdown
+        run: python3 scripts/quorum_demo.py
+      - name: Gateway smoke test
+        run: |
+          curl -sf http://localhost:8000/api/cluster > cluster.json
+          python3 - << 'PY'
+          import json
+          with open('cluster.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          assert len(data.get('nodes', [])) == 3, data
+          print('cluster nodes:', len(data['nodes']))
+          PY
+      - name: Teardown
         if: always()
         run: docker compose down -v
 
+  frontend-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install + type-check + build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build

@@ -1,6 +1,14 @@
 # Build outputs
 build/
 cmake-build-*/
+frontend/node_modules/
+frontend/dist/
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/tailwind.config.js
+frontend/tailwind.config.d.ts
+frontend/*.tsbuildinfo
+_phase2_frontend_extracted.txt
 
 # Runtime data
 data/
@@ -27,4 +35,3 @@ Thumbs.db
 *.user
 *.VC.db
 *.opendb
-

@@ -1,6 +1,8 @@
 build/
 bench_data/
 data/
+frontend/node_modules/
+frontend/dist/
 .git/
 *.user
 *.suo
@@ -11,4 +13,3 @@ data/
 *.ilk
 *.lib
 *.exe
-

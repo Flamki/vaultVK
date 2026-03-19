@@ -1,3 +1,10 @@
+networks:
+  vaultkv-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
 services:
   vaultkv-node1:
     build:
@@ -15,24 +22,23 @@ services:
       - "--quorum"
       - "2"
       - "--peer"
-      - "2@vaultkv-node2:7379"
+      - "2@vaultkv-node2:7380"
       - "--peer"
-      - "3@vaultkv-node3:7379"
+      - "3@vaultkv-node3:7381"
     environment:
       VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
     ports:
       - "7379:7379"
     volumes:
       - vaultkv_node1_data:/var/lib/vaultkv
-    depends_on:
-      - vaultkv-node2
-      - vaultkv-node3
+    networks:
+      - vaultkv-net
+    restart: on-failure
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   vaultkv-node2:
     build:
@@ -43,21 +49,23 @@ services:
       - "--data-dir"
       - "/var/lib/vaultkv"
       - "--port"
-      - "7379"
+      - "7380"
       - "--node-id"
       - "2"
     environment:
       VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
     ports:
-      - "7380:7379"
+      - "7380:7380"
     volumes:
       - vaultkv_node2_data:/var/lib/vaultkv
+    networks:
+      - vaultkv-net
+    restart: on-failure
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7380"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   vaultkv-node3:
     build:
@@ -68,21 +76,64 @@ services:
       - "--data-dir"
       - "/var/lib/vaultkv"
       - "--port"
-      - "7379"
+      - "7381"
       - "--node-id"
       - "3"
     environment:
       VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
     ports:
-      - "7381:7379"
+      - "7381:7381"
     volumes:
       - vaultkv_node3_data:/var/lib/vaultkv
+    networks:
+      - vaultkv-net
+    restart: on-failure
     healthcheck:
-      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7381"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: vaultkv-gateway
+    environment:
+      - VAULTKV_NODES=1@vaultkv-node1:7379,2@vaultkv-node2:7380,3@vaultkv-node3:7381
+    ports:
+      - "8000:8000"
+    depends_on:
+      vaultkv-node1:
+        condition: service_healthy
+      vaultkv-node2:
+        condition: service_healthy
+      vaultkv-node3:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - vaultkv-net
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: vaultkv-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    networks:
+      - vaultkv-net
+    restart: on-failure
 
 volumes:
   vaultkv_node1_data:
