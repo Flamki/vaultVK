@@ -3,6 +3,7 @@ build/
 cmake-build-*/
 frontend/node_modules/
 frontend/dist/
+frontend/.vercel/
 frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend/tailwind.config.js
