@@ -1,0 +1,30 @@
+# Build outputs
+build/
+cmake-build-*/
+
+# Runtime data
+data/
+bench_data/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Docker/local IDE noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Windows/MSVC artifacts
+*.obj
+*.pdb
+*.ilk
+*.idb
+*.lib
+*.exp
+*.suo
+*.user
+*.VC.db
+*.opendb
+

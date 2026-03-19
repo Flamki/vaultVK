@@ -1,0 +1,90 @@
+services:
+  vaultkv-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vaultkv-node1
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7379"
+      - "--node-id"
+      - "1"
+      - "--replication"
+      - "--quorum"
+      - "2"
+      - "--peer"
+      - "2@vaultkv-node2:7379"
+      - "--peer"
+      - "3@vaultkv-node3:7379"
+    environment:
+      VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+    ports:
+      - "7379:7379"
+    volumes:
+      - vaultkv_node1_data:/var/lib/vaultkv
+    depends_on:
+      - vaultkv-node2
+      - vaultkv-node3
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  vaultkv-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vaultkv-node2
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7379"
+      - "--node-id"
+      - "2"
+    environment:
+      VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+    ports:
+      - "7380:7379"
+    volumes:
+      - vaultkv_node2_data:/var/lib/vaultkv
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  vaultkv-node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vaultkv-node3
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7379"
+      - "--node-id"
+      - "3"
+    environment:
+      VAULTKV_KEY_HEX: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+    ports:
+      - "7381:7379"
+    volumes:
+      - vaultkv_node3_data:/var/lib/vaultkv
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  vaultkv_node1_data:
+  vaultkv_node2_data:
+  vaultkv_node3_data:

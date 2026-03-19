@@ -1,0 +1,14 @@
+build/
+bench_data/
+data/
+.git/
+*.user
+*.suo
+*.vcxproj*
+*.sln
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.exe
+
