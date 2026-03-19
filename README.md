@@ -106,7 +106,17 @@ Included files for this flow:
 
 Important:
 - Backend endpoint must be HTTPS for browser mixed-content safety.
-- Gateway CORS is open by default in Phase 2 (`allow_origins=["*"]`).
+- Gateway CORS is configurable with `VAULTKV_CORS_ORIGINS` (default remains `*` if not set).
+
+## Oracle Always Free Backend (No Auto Sleep Platform Option)
+
+If you need a no-cost backend platform without Render-style auto sleep, use Oracle Always Free VM deployment:
+
+- Full guide: `DEPLOY_ORACLE.md`
+- Assets: `deploy/oracle/docker-compose.oracle.yml`, `deploy/oracle/Caddyfile`
+- Helper scripts:
+  - `scripts/oracle_bootstrap.sh`
+  - `scripts/oracle_deploy.sh`
 
 ## Quorum Demo
 

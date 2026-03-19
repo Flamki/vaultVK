@@ -1,0 +1,9 @@
+{$DOMAIN} {
+  encode zstd gzip
+  tls {$ACME_EMAIL}
+
+  @api path /api/* /ws/* /health /docs* /openapi.json
+  reverse_proxy @api gateway:8000
+
+  respond / "VaultKV gateway is running. Use /api or /ws endpoints." 200
+}

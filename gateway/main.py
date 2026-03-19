@@ -38,6 +38,16 @@ def parse_nodes_env(raw: str | None) -> list[tuple[int, str, int]]:
 NODES = parse_nodes_env(os.getenv("VAULTKV_NODES"))
 
 
+def parse_cors_origins(raw: str | None) -> list[str]:
+    if not raw:
+        return ["*"]
+    origins = [item.strip() for item in raw.split(",") if item.strip()]
+    return origins or ["*"]
+
+
+CORS_ORIGINS = parse_cors_origins(os.getenv("VAULTKV_CORS_ORIGINS"))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.docker = None
@@ -62,7 +72,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="VaultKV Gateway", version="2.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -1,0 +1,136 @@
+name: vaultkv-oracle
+
+networks:
+  vaultkv-net:
+    driver: bridge
+
+services:
+  vaultkv-node1:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7379"
+      - "--node-id"
+      - "1"
+      - "--replication"
+      - "--quorum"
+      - "2"
+      - "--peer"
+      - "2@vaultkv-node2:7380"
+      - "--peer"
+      - "3@vaultkv-node3:7381"
+    environment:
+      VAULTKV_KEY_HEX: ${VAULTKV_KEY_HEX}
+    volumes:
+      - vaultkv_node1_data:/var/lib/vaultkv
+    networks:
+      - vaultkv-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7379"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+
+  vaultkv-node2:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7380"
+      - "--node-id"
+      - "2"
+    environment:
+      VAULTKV_KEY_HEX: ${VAULTKV_KEY_HEX}
+    volumes:
+      - vaultkv_node2_data:/var/lib/vaultkv
+    networks:
+      - vaultkv-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7380"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+
+  vaultkv-node3:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    command:
+      - "--data-dir"
+      - "/var/lib/vaultkv"
+      - "--port"
+      - "7381"
+      - "--node-id"
+      - "3"
+    environment:
+      VAULTKV_KEY_HEX: ${VAULTKV_KEY_HEX}
+    volumes:
+      - vaultkv_node3_data:/var/lib/vaultkv
+    networks:
+      - vaultkv-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7381"]
+      interval: 10s
+      timeout: 3s
+      retries: 8
+
+  gateway:
+    build:
+      context: ../../gateway
+      dockerfile: Dockerfile
+    environment:
+      VAULTKV_NODES: "1@vaultkv-node1:7379,2@vaultkv-node2:7380,3@vaultkv-node3:7381"
+      VAULTKV_CORS_ORIGINS: ${VAULTKV_CORS_ORIGINS}
+    depends_on:
+      vaultkv-node1:
+        condition: service_healthy
+      vaultkv-node2:
+        condition: service_healthy
+      vaultkv-node3:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - vaultkv-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  caddy:
+    image: caddy:2-alpine
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - vaultkv-net
+    restart: unless-stopped
+
+volumes:
+  vaultkv_node1_data:
+  vaultkv_node2_data:
+  vaultkv_node3_data:
+  caddy_data:
+  caddy_config:
