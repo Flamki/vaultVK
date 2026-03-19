@@ -36,3 +36,5 @@ Thumbs.db
 *.user
 *.VC.db
 *.opendb
+
+.vercel
