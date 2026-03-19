@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useClusterStore } from "../store/clusterStore";
 import { useMetricsStore } from "../store/metricsStore";
+import { wsUrl } from "../lib/runtimeConfig";
 
 export function useClusterWS() {
   const ws = useRef<WebSocket | null>(null);
@@ -12,8 +13,7 @@ export function useClusterWS() {
     let timer: number | undefined;
 
     function connect() {
-      const proto = location.protocol === "https:" ? "wss" : "ws";
-      const url = `${proto}://${location.host}/ws/metrics`;
+      const url = wsUrl("/ws/metrics");
       ws.current = new WebSocket(url);
       setStatus("connecting");
 
@@ -52,4 +52,3 @@ export function useClusterWS() {
     };
   }, [push, setNodes, setStatus]);
 }
-

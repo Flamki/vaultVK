@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { KeyTable } from "../components/KeyTable";
+import { apiUrl } from "../lib/runtimeConfig";
 import { useClusterStore } from "../store/clusterStore";
 
 type Op = "GET" | "SET" | "DEL" | "SCAN";
@@ -32,18 +33,18 @@ export function Explorer() {
     try {
       let res: Response;
       if (op === "SET") {
-        res = await fetch("/api/keys", {
+        res = await fetch(apiUrl("/api/keys"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ key, value: val })
         });
       } else if (op === "GET") {
         const qs = node ? `?node=${node}` : "";
-        res = await fetch(`/api/keys/${encodeURIComponent(key)}${qs}`);
+        res = await fetch(apiUrl(`/api/keys/${encodeURIComponent(key)}${qs}`));
       } else if (op === "DEL") {
-        res = await fetch(`/api/keys/${encodeURIComponent(key)}`, { method: "DELETE" });
+        res = await fetch(apiUrl(`/api/keys/${encodeURIComponent(key)}`), { method: "DELETE" });
       } else {
-        res = await fetch(`/api/keys?prefix=${encodeURIComponent(key)}&limit=50`);
+        res = await fetch(apiUrl(`/api/keys?prefix=${encodeURIComponent(key)}&limit=50`));
       }
 
       const data = await res.json();
@@ -145,4 +146,3 @@ export function Explorer() {
     </div>
   );
 }
-

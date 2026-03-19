@@ -85,6 +85,29 @@ powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
 
 These run build/test, launch all services, execute quorum demo, validate gateway + frontend health, and teardown.
 
+## Vercel Deployment (Frontend + External Backend)
+
+Vercel hosts the React frontend. The 3-node C++ cluster + FastAPI gateway should run on a Linux container host.
+
+1. Deploy backend stack first (Docker host) and expose gateway over HTTPS, for example:
+   - `https://gateway.yourdomain.com/api/*`
+   - `wss://gateway.yourdomain.com/ws/*`
+2. In Vercel, import this repo and set **Root Directory** to `frontend`.
+3. Configure environment variables in Vercel project settings:
+   - `VITE_API_BASE_URL=https://gateway.yourdomain.com`
+   - `VITE_WS_BASE_URL=wss://gateway.yourdomain.com` (optional)
+4. Deploy.
+
+Included files for this flow:
+- `frontend/vercel.json` (SPA rewrite to `index.html`)
+- `frontend/.env.example` (required env template)
+- `frontend/src/lib/runtimeConfig.ts` (env-aware API/WS routing)
+- `DEPLOY_VERCEL.md` (full deployment checklist)
+
+Important:
+- Backend endpoint must be HTTPS for browser mixed-content safety.
+- Gateway CORS is open by default in Phase 2 (`allow_origins=["*"]`).
+
 ## Quorum Demo
 
 Linux/macOS:
@@ -143,4 +166,3 @@ vaultVK/
 - C++ server runtime is Linux-first (`epoll`).
 - On non-Linux hosts, use Docker for complete Phase 2 behavior.
 - If host OpenSSL dev libs are missing, host-native build uses a development fallback cipher; Docker runtime uses OpenSSL in Linux containers.
-

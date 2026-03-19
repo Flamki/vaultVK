@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { apiUrl } from "../lib/runtimeConfig";
 import { useClusterStore } from "../store/clusterStore";
 
 interface EventRow {
@@ -24,7 +25,7 @@ export function Raft() {
 
   async function killNode(nodeId: number) {
     log(`Killing node ${nodeId}...`, "text-amber-300");
-    const res = await fetch(`/api/nodes/${nodeId}/kill`, { method: "POST" });
+    const res = await fetch(apiUrl(`/api/nodes/${nodeId}/kill`), { method: "POST" });
     const data = await res.json();
     if (!res.ok || !data.ok) {
       log(`Kill failed: ${data.stderr ?? data.detail ?? "unknown error"}`, "text-red-400");
@@ -34,7 +35,7 @@ export function Raft() {
     const prevLeader = nodes.find((n) => n.is_leader)?.node_id;
     let attempts = 0;
     const poll = setInterval(async () => {
-      const status = await fetch("/api/cluster").then((r) => r.json());
+      const status = await fetch(apiUrl("/api/cluster")).then((r) => r.json());
       const next = status.nodes.find((n: { is_leader: boolean; healthy: boolean }) => n.is_leader && n.healthy);
       if (next && next.node_id !== prevLeader) {
         log(`New leader elected: Node ${next.node_id}`, "text-teal-300");
@@ -50,7 +51,7 @@ export function Raft() {
 
   async function restartNode(nodeId: number) {
     log(`Restarting node ${nodeId}...`, "text-zinc-300");
-    const res = await fetch(`/api/nodes/${nodeId}/restart`, { method: "POST" });
+    const res = await fetch(apiUrl(`/api/nodes/${nodeId}/restart`), { method: "POST" });
     const data = await res.json();
     if (!res.ok || !data.ok) {
       log(`Restart failed: ${data.stderr ?? data.detail ?? "unknown error"}`, "text-red-400");
@@ -118,4 +119,3 @@ export function Raft() {
     </div>
   );
 }
-

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import clsx from "clsx";
 
+import { apiUrl } from "../lib/runtimeConfig";
 import { NodeMeta } from "../store/clusterStore";
 
 interface Props {
@@ -15,7 +16,7 @@ export function NodeCard({ node }: Props) {
   async function kill() {
     setPendingKill(true);
     try {
-      await fetch(`/api/nodes/${node.node_id}/kill`, { method: "POST" });
+      await fetch(apiUrl(`/api/nodes/${node.node_id}/kill`), { method: "POST" });
     } finally {
       setPendingKill(false);
     }
@@ -24,7 +25,7 @@ export function NodeCard({ node }: Props) {
   async function restart() {
     setPendingRestart(true);
     try {
-      await fetch(`/api/nodes/${node.node_id}/restart`, { method: "POST" });
+      await fetch(apiUrl(`/api/nodes/${node.node_id}/restart`), { method: "POST" });
     } finally {
       setPendingRestart(false);
     }
@@ -93,4 +94,3 @@ function Metric({ title, value, tone }: { title: string; value: string; tone: st
     </div>
   );
 }
-
