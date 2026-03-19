@@ -1,5 +1,12 @@
 # VaultKV Phase 2 Architecture
 
+Related docs:
+
+- Main overview: [README.md](README.md)
+- Vercel frontend deployment: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
+- Oracle backend deployment: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
+- Render backend deployment: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
+
 ## System Layers
 
 1. `vaultkv-server` (C++17):
@@ -43,4 +50,3 @@
 3. Gateway marks node unhealthy and elects next healthy node.
 4. UI event log reports leader transition.
 5. Node can be brought back by `POST /api/nodes/{node_id}/restart`.
-

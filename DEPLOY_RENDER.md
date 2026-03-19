@@ -7,6 +7,12 @@ This setup uses Render Blueprint to deploy:
 - `vaultkv-node3` (private service)
 - `vaultkv-gateway` (public web service)
 
+Related docs:
+
+- Main overview: [README.md](README.md)
+- Vercel frontend guide: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
+- Oracle backend guide: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
+
 ## Important Cost Note
 
 Private services (`pserv`) do not support the `free` plan. This setup depends on Render trial credits for the 3 node services.
@@ -17,6 +23,8 @@ Private services (`pserv`) do not support the `free` plan. This setup depends on
 2. In Render dashboard, choose **New -> Blueprint**.
 3. Select this repository.
 4. Render detects `render.yaml` at repo root.
+
+Blueprint file: [render.yaml](render.yaml)
 
 ## 2) Set Required Environment Variables
 

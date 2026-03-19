@@ -2,6 +2,12 @@
 
 This document deploys the React control plane on Vercel while running the VaultKV backend stack on a Linux container host.
 
+Related docs:
+
+- Main overview: [README.md](README.md)
+- Oracle backend guide: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
+- Render backend guide: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
+
 ## 1) Backend Requirement
 
 Vercel does not run the full long-lived VaultKV stack (3 C++ nodes + FastAPI gateway + Docker-based node control).  
@@ -11,6 +17,11 @@ Required routes:
 
 - `https://gateway.yourdomain.com/api/*`
 - `wss://gateway.yourdomain.com/ws/*`
+
+Current live example:
+
+- Frontend: [https://vault-vk.vercel.app](https://vault-vk.vercel.app)
+- Backend: [https://80.225.207.59.nip.io](https://80.225.207.59.nip.io)
 
 ## 2) Vercel Project Settings
 
@@ -45,3 +56,8 @@ vercel --prod
 - `frontend/vercel.json`: SPA rewrite for React Router
 - `frontend/.env.example`: environment variable template
 - `frontend/src/lib/runtimeConfig.ts`: central API/WS URL builder used by all network calls
+
+## Quick Troubleshooting
+
+- `404: NOT_FOUND` on Vercel root: set project Root Directory to `frontend`, then redeploy.
+- Key Explorer `{"detail":"key not found"}`: run `SET` first, then `GET` the same key.

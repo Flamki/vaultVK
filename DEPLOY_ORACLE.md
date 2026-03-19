@@ -2,6 +2,13 @@
 
 This runbook deploys the VaultKV backend (3 nodes + gateway + TLS proxy) to an Oracle Cloud Always Free VM, then connects your Vercel frontend.
 
+Related docs:
+
+- Main overview: [README.md](README.md)
+- Vercel frontend guide: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
+- Render backend guide: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
+- Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+
 ## 1) Create Oracle VM
 
 1. Create an Oracle Cloud account and choose a region with available Always Free capacity.
@@ -89,8 +96,8 @@ bash scripts/oracle_deploy.sh down
 
 ## Included Files
 
-- `deploy/oracle/docker-compose.oracle.yml`
-- `deploy/oracle/Caddyfile`
-- `deploy/oracle/.env.example`
-- `scripts/oracle_bootstrap.sh`
-- `scripts/oracle_deploy.sh`
+- [deploy/oracle/docker-compose.oracle.yml](deploy/oracle/docker-compose.oracle.yml)
+- [deploy/oracle/Caddyfile](deploy/oracle/Caddyfile)
+- [deploy/oracle/.env.example](deploy/oracle/.env.example)
+- [scripts/oracle_bootstrap.sh](scripts/oracle_bootstrap.sh)
+- [scripts/oracle_deploy.sh](scripts/oracle_deploy.sh)

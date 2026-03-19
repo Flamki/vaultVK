@@ -13,20 +13,27 @@
   <img src="https://img.shields.io/badge/Crypto-AES--256--GCM-informational.svg" alt="AES-256-GCM">
 </p>
 
-VaultKV is a production-style distributed key-value storage system with a complete full-stack demo layer:
+VaultKV is a distributed key-value system with a complete full-stack control plane:
 
-- C++17 storage engine (`epoll`, TLV protocol, WAL, MemTable, SSTable, compaction)
-- FastAPI gateway translating TLV to REST + WebSocket
-- React control plane with live charts and cluster actions
-- Dockerized 5-service stack (3 nodes + gateway + frontend)
+- C++17 engine (`epoll`, TLV protocol, WAL, MemTable, SSTable, compaction)
+- FastAPI gateway (TLV-to-REST + WebSocket metrics stream)
+- React dashboard (ops charts, key explorer, failover controls)
+- Dockerized 5-service runtime (3 data nodes + gateway + frontend)
 
-## Phase 2 Highlights
+## Live Deployment (Current)
 
-- Live ops/sec chart (500ms stream) via WebSocket
-- Per-node health cards (latency, lag, role, ops)
-- Key Explorer (`GET`, `SET`, `DEL`, `SCAN`) with history
-- Raft-style failover demo (`kill` / `restart` node from UI)
-- Expanded CI: native build + ASAN + TSAN + UBSAN + docker smoke + frontend build
+- Frontend: [https://vault-vk.vercel.app](https://vault-vk.vercel.app)
+- Backend gateway: [https://80.225.207.59.nip.io](https://80.225.207.59.nip.io)
+- Health check: [https://80.225.207.59.nip.io/health](https://80.225.207.59.nip.io/health)
+- Cluster snapshot: [https://80.225.207.59.nip.io/api/cluster](https://80.225.207.59.nip.io/api/cluster)
+- Gateway OpenAPI docs: [https://80.225.207.59.nip.io/docs](https://80.225.207.59.nip.io/docs)
+
+## Documentation Links
+
+- Architecture notes: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Vercel deployment: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
+- Oracle backend deployment: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
+- Render trial deployment: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
 
 ## Architecture
 
@@ -43,25 +50,27 @@ flowchart LR
     N3 --> D3[(Encrypted WAL/SSTable)]
 ```
 
-## Quick Start (Full Stack)
+## Local Full Stack (Docker)
+
+Start:
 
 ```bash
 docker compose up -d --build
 ```
 
-Open:
+Endpoints:
 
-- Frontend dashboard: `http://localhost:3000`
-- Gateway API docs: `http://localhost:8000/docs`
-- Gateway cluster snapshot: `http://localhost:8000/api/cluster`
+- Frontend: `http://localhost:3000`
+- Gateway docs: `http://localhost:8000/docs`
+- Cluster snapshot: `http://localhost:8000/api/cluster`
 
-Shutdown:
+Stop:
 
 ```bash
 docker compose down -v
 ```
 
-## Local Native Build (Engine)
+## Native Engine Build
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -77,57 +86,40 @@ Linux/macOS:
 bash scripts/verify_all.sh
 ```
 
-Windows PowerShell:
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\verify_all.ps1
 ```
 
-These run build/test, launch all services, execute quorum demo, validate gateway + frontend health, and teardown.
+These run configure/build/tests, launch all services, execute quorum replication demo, verify gateway/frontend health, then teardown.
 
-## Vercel Deployment (Frontend + External Backend)
+## Deployment Options
 
-Vercel hosts the React frontend. The 3-node C++ cluster + FastAPI gateway should run on a Linux container host.
+### Vercel Frontend + External Backend
 
-1. Deploy backend stack first (Docker host) and expose gateway over HTTPS, for example:
-   - `https://gateway.yourdomain.com/api/*`
-   - `wss://gateway.yourdomain.com/ws/*`
-2. In Vercel, import this repo and set **Root Directory** to `frontend`.
-3. Configure environment variables in Vercel project settings:
-   - `VITE_API_BASE_URL=https://gateway.yourdomain.com`
-   - `VITE_WS_BASE_URL=wss://gateway.yourdomain.com` (optional)
-4. Deploy.
+- Guide: [DEPLOY_VERCEL.md](DEPLOY_VERCEL.md)
+- Required Vercel root directory: `frontend`
+- Required env vars:
+  - `VITE_API_BASE_URL=https://<backend-domain>`
+  - `VITE_WS_BASE_URL=wss://<backend-domain>` (optional)
 
-Included files for this flow:
-- `frontend/vercel.json` (SPA rewrite to `index.html`)
-- `frontend/.env.example` (required env template)
-- `frontend/src/lib/runtimeConfig.ts` (env-aware API/WS routing)
-- `DEPLOY_VERCEL.md` (full deployment checklist)
+### Oracle Always Free Backend (Recommended)
 
-Important:
-- Backend endpoint must be HTTPS for browser mixed-content safety.
-- Gateway CORS is configurable with `VAULTKV_CORS_ORIGINS` (default remains `*` if not set).
-
-## Oracle Always Free Backend (No Auto Sleep Platform Option)
-
-If you need a no-cost backend platform without Render-style auto sleep, use Oracle Always Free VM deployment:
-
-- Full guide: `DEPLOY_ORACLE.md`
-- Assets: `deploy/oracle/docker-compose.oracle.yml`, `deploy/oracle/Caddyfile`
+- Guide: [DEPLOY_ORACLE.md](DEPLOY_ORACLE.md)
+- Deployment assets:
+  - [`deploy/oracle/docker-compose.oracle.yml`](deploy/oracle/docker-compose.oracle.yml)
+  - [`deploy/oracle/Caddyfile`](deploy/oracle/Caddyfile)
+  - [`deploy/oracle/.env.example`](deploy/oracle/.env.example)
 - Helper scripts:
-  - `scripts/oracle_bootstrap.sh`
-  - `scripts/oracle_deploy.sh`
+  - [`scripts/oracle_bootstrap.sh`](scripts/oracle_bootstrap.sh)
+  - [`scripts/oracle_deploy.sh`](scripts/oracle_deploy.sh)
 
-## Render Free Trial Backend
+### Render Trial Backend
 
-If you want to run quickly on Render trial credits, use:
-
-- `render.yaml` (Blueprint deployment spec)
-- `DEPLOY_RENDER.md` (step-by-step guide)
-
-Notes:
-- Render private services are required for VaultKV nodes.
-- Node kill/restart container controls are disabled in this mode.
+- Guide: [DEPLOY_RENDER.md](DEPLOY_RENDER.md)
+- Blueprint: [render.yaml](render.yaml)
+- Note: private services are required for nodes (trial credits needed).
 
 ## Quorum Demo
 
@@ -137,16 +129,52 @@ Linux/macOS:
 bash scripts/quorum_demo.sh
 ```
 
-Windows PowerShell:
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\quorum_demo.ps1
 ```
 
-Python (CI-friendly):
+Python:
 
 ```bash
 python3 scripts/quorum_demo.py
+```
+
+## Live API Smoke Test (Copy/Paste)
+
+Use this against the current backend:
+
+```bash
+curl -s https://80.225.207.59.nip.io/health
+curl -s -X POST https://80.225.207.59.nip.io/api/keys -H "content-type: application/json" -d "{\"key\":\"hello\",\"value\":\"world\"}"
+curl -s "https://80.225.207.59.nip.io/api/keys/hello"
+curl -s "https://80.225.207.59.nip.io/api/scan?prefix=h&limit=10"
+```
+
+Windows `curl` TLS note:
+
+```powershell
+curl.exe --ssl-no-revoke https://80.225.207.59.nip.io/health
+```
+
+## Troubleshooting
+
+### `GET` shows `key not found`
+
+This is expected when the key has not been written yet. Use `SET` first, then `GET` the same key.
+
+### Vercel shows `404: NOT_FOUND`
+
+Most common cause: wrong project root.  
+Set Vercel project root directory to `frontend`, then redeploy.
+
+### TLS issues on some Windows curl builds
+
+If `curl` fails with revocation checks on Windows Schannel, use:
+
+```powershell
+curl.exe --ssl-no-revoke https://<url>
 ```
 
 ## Repository Layout
@@ -159,31 +187,23 @@ vaultVK/
   gateway/                  # FastAPI TLV bridge
   frontend/                 # React control plane
   nginx/                    # Reverse proxy for API + WS
-  scripts/                  # Verification and demo scripts
-  .github/workflows/ci.yml  # 6-job CI pipeline
+  scripts/                  # Verification and deployment scripts
+  .github/workflows/ci.yml  # Multi-job CI pipeline
 ```
 
 ## CI Pipeline
 
-`.github/workflows/ci.yml` includes:
+Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-- `native-build` (release build + tests + benchmark smoke)
-- `asan` (address sanitizer)
-- `tsan` (thread sanitizer)
-- `ubsan` (undefined behavior sanitizer)
-- `docker-cluster` (full stack + quorum + gateway smoke)
-- `frontend-build` (npm ci + typecheck + production build)
-
-## Design Notes
-
-- `epoll` is used for scalable non-blocking IO in the C++ server.
-- WAL-first writes protect durability before MemTable apply.
-- FastAPI isolates browser concerns from TLV binary framing.
-- WebSocket stream avoids polling jitter in dashboard charts.
-- Failover controls are intentionally demo-focused for interview storytelling.
+- `native-build`
+- `asan`
+- `tsan`
+- `ubsan`
+- `docker-cluster`
+- `frontend-build`
 
 ## Platform Notes
 
 - C++ server runtime is Linux-first (`epoll`).
-- On non-Linux hosts, use Docker for complete Phase 2 behavior.
-- If host OpenSSL dev libs are missing, host-native build uses a development fallback cipher; Docker runtime uses OpenSSL in Linux containers.
+- On Windows/macOS, use Docker for complete Phase 2 runtime behavior.
+- If host OpenSSL dev libs are missing, host-native build uses development fallback crypto; Linux Docker runtime uses OpenSSL.
