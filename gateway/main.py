@@ -46,6 +46,12 @@ def parse_cors_origins(raw: str | None) -> list[str]:
 
 
 CORS_ORIGINS = parse_cors_origins(os.getenv("VAULTKV_CORS_ORIGINS"))
+DISABLE_DOCKER_CONTROL = os.getenv("VAULTKV_DISABLE_DOCKER_CONTROL", "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 @asynccontextmanager
@@ -150,6 +156,9 @@ def _container_name_for_node(node_id: int) -> str:
 
 
 def _docker_control(app_: FastAPI, action: str, container_name: str) -> tuple[bool, str]:
+    if DISABLE_DOCKER_CONTROL:
+        return False, "container control disabled in this deployment"
+
     try:
         client = app_.state.docker
         if client is not None:

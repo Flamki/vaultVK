@@ -118,6 +118,17 @@ If you need a no-cost backend platform without Render-style auto sleep, use Orac
   - `scripts/oracle_bootstrap.sh`
   - `scripts/oracle_deploy.sh`
 
+## Render Free Trial Backend
+
+If you want to run quickly on Render trial credits, use:
+
+- `render.yaml` (Blueprint deployment spec)
+- `DEPLOY_RENDER.md` (step-by-step guide)
+
+Notes:
+- Render private services are required for VaultKV nodes.
+- Node kill/restart container controls are disabled in this mode.
+
 ## Quorum Demo
 
 Linux/macOS:

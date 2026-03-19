@@ -1,0 +1,65 @@
+services:
+  - type: pserv
+    name: vaultkv-node1
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
+      --data-dir /var/lib/vaultkv --port 7379 --node-id 1 --replication --quorum 2
+      --peer 2@vaultkv-node2:7380 --peer 3@vaultkv-node3:7381
+    envVars:
+      - key: VAULTKV_KEY_HEX
+        sync: false
+    disk:
+      name: node1-data
+      mountPath: /var/lib/vaultkv
+      sizeGB: 1
+
+  - type: pserv
+    name: vaultkv-node2
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
+      --data-dir /var/lib/vaultkv --port 7380 --node-id 2
+    envVars:
+      - key: VAULTKV_KEY_HEX
+        sync: false
+    disk:
+      name: node2-data
+      mountPath: /var/lib/vaultkv
+      sizeGB: 1
+
+  - type: pserv
+    name: vaultkv-node3
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
+      --data-dir /var/lib/vaultkv --port 7381 --node-id 3
+    envVars:
+      - key: VAULTKV_KEY_HEX
+        sync: false
+    disk:
+      name: node3-data
+      mountPath: /var/lib/vaultkv
+      sizeGB: 1
+
+  - type: web
+    name: vaultkv-gateway
+    runtime: docker
+    plan: free
+    dockerfilePath: ./gateway/Dockerfile
+    dockerContext: ./gateway
+    dockerCommand: sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1"
+    healthCheckPath: /health
+    envVars:
+      - key: VAULTKV_NODES
+        value: 1@vaultkv-node1:7379,2@vaultkv-node2:7380,3@vaultkv-node3:7381
+      - key: VAULTKV_CORS_ORIGINS
+        sync: false
+      - key: VAULTKV_DISABLE_DOCKER_CONTROL
+        value: "1"
