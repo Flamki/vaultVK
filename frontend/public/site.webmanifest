@@ -1,0 +1,9 @@
+{
+  "name": "vaultvk Console",
+  "short_name": "vaultvk",
+  "description": "A high-performance distributed storage observability dashboard with real-time metrics and cluster management.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080d12",
+  "theme_color": "#0a1018"
+}

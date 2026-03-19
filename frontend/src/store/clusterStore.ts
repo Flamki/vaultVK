@@ -18,6 +18,7 @@ export interface NodeMeta {
 interface ClusterState {
   nodes: NodeMeta[];
   wsStatus: "connecting" | "open" | "closed";
+  lastUpdated: number | null;
   setNodes: (nodes: NodeMeta[]) => void;
   setStatus: (s: ClusterState["wsStatus"]) => void;
 }
@@ -25,7 +26,7 @@ interface ClusterState {
 export const useClusterStore = create<ClusterState>((set) => ({
   nodes: [],
   wsStatus: "connecting",
-  setNodes: (nodes) => set({ nodes }),
+  lastUpdated: null,
+  setNodes: (nodes) => set({ nodes, lastUpdated: Date.now() }),
   setStatus: (wsStatus) => set({ wsStatus })
 }));
-

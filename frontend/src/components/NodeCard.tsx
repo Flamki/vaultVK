@@ -34,9 +34,9 @@ export function NodeCard({ node }: Props) {
   return (
     <div
       className={clsx(
-        "rounded-2xl border bg-ink-900/80 p-4 backdrop-blur-sm",
-        "transition-all duration-300 hover:-translate-y-0.5",
-        node.is_leader ? "border-sky-400/70 shadow-[0_0_32px_-18px_rgba(56,189,248,.95)]" : "border-ink-700"
+        "rounded-2xl border bg-black/25 p-4 backdrop-blur-sm",
+        "transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20",
+        node.is_leader ? "border-sky-400/70 shadow-[0_0_38px_-20px_rgba(56,189,248,.95)]" : "border-white/10"
       )}
     >
       <div className="mb-3 flex items-center justify-between">
@@ -48,13 +48,13 @@ export function NodeCard({ node }: Props) {
             )}
           />
           <span className="font-mono text-sm text-zinc-100">Node {node.node_id}</span>
-          {node.is_leader ? (
+          {node.is_leader && node.healthy ? (
             <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
               LEADER
             </span>
           ) : null}
         </div>
-        <span className="font-mono text-[11px] text-zinc-500">
+        <span className="font-mono text-[11px] text-zinc-400">
           {node.host}:{node.port}
         </span>
       </div>
@@ -88,7 +88,7 @@ export function NodeCard({ node }: Props) {
 
 function Metric({ title, value, tone }: { title: string; value: string; tone: string }) {
   return (
-    <div className="rounded-md border border-ink-700 bg-ink-800/70 p-2">
+    <div className="rounded-md border border-white/10 bg-black/25 p-2">
       <div className="mb-0.5 text-[10px] text-zinc-500">{title}</div>
       <div className={clsx("truncate text-[12px]", tone)}>{value}</div>
     </div>

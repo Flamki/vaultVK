@@ -20,8 +20,9 @@ export function OpsChart() {
   }));
 
   return (
-    <section className="rounded-2xl border border-ink-700 bg-ink-900/80 p-4 animate-floatIn">
-      <h3 className="mb-3 text-sm font-medium text-zinc-300">Live ops / second</h3>
+    <section className="rounded-3xl border border-white/10 bg-black/25 p-4 animate-floatIn">
+      <h3 className="mb-3 text-sm font-medium text-zinc-300">Live throughput (ops/s)</h3>
+      {!data.length ? <p className="mb-3 text-xs text-zinc-500">Waiting for metric stream...</p> : null}
       <ResponsiveContainer width="100%" height={250}>
         <AreaChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
           <defs>
@@ -34,7 +35,7 @@ export function OpsChart() {
               <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" />
+          <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
           <XAxis dataKey="time" tick={{ fill: "#6b7280", fontSize: 11 }} interval="preserveStartEnd" />
           <YAxis
             tick={{ fill: "#6b7280", fontSize: 11 }}
@@ -72,4 +73,3 @@ export function OpsChart() {
     </section>
   );
 }
-

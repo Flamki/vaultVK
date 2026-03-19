@@ -6,6 +6,8 @@
 
 :root {
   color-scheme: dark;
+  --surface: #080d12;
+  --grid-line: rgba(255, 255, 255, 0.04);
 }
 
 * {
@@ -21,6 +23,11 @@ body,
 
 body {
   font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
 ::-webkit-scrollbar {
@@ -37,3 +44,17 @@ body {
   background: #0b0f16;
 }
 
+.bg-surface {
+  background-color: var(--surface);
+}
+
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
